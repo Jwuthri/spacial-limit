@@ -74,9 +74,17 @@ input:focus, textarea:focus {
 }
 
 .hide-box .bbox:not(.reveal) {
-  opacity: 0;
+  opacity: 0.2;
+  transition: opacity 0.2s ease;
 }
 
 .bbox.reveal {
   opacity: 1 !important;
+  transition: opacity 0.2s ease;
+  transform: scale(1.02);
+  z-index: 10;
+}
+
+.bbox {
+  transition: opacity 0.2s ease, transform 0.2s ease;
 } 

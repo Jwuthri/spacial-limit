@@ -211,10 +211,14 @@ export default function ImageCanvas() {
           points.map((point, i) => (
             <div
               key={i}
+              className={`bbox ${i === hoveredBox ? 'reveal' : ''}`}
               style={{
                 position: 'absolute',
                 left: `${point.point.x * 100}%`,
                 top: `${point.point.y * 100}%`,
+                width: '20px',
+                height: '20px',
+                transform: 'translate(-50%, -50%)'
               }}
             >
               <div
@@ -225,7 +229,7 @@ export default function ImageCanvas() {
                   color: 'white',
                   fontSize: '12px',
                   padding: '2px 6px',
-                  bottom: '16px',
+                  bottom: '20px',
                   borderRadius: '2px',
                   transform: 'translateX(-50%)',
                   left: '50%',
@@ -242,6 +246,8 @@ export default function ImageCanvas() {
                   background: '#3B68FF',
                   borderRadius: '50%',
                   border: '2px solid white',
+                  left: '50%',
+                  top: '50%',
                   transform: 'translate(-50%, -50%)'
                 }}
               />
@@ -254,6 +260,7 @@ export default function ImageCanvas() {
             <div key={i} style={{ position: 'absolute' }}>
               {/* Simple 3D box representation - could be enhanced */}
               <div
+                className={`bbox ${i === hoveredBox ? 'reveal' : ''}`}
                 style={{
                   position: 'absolute',
                   border: '2px solid #3B68FF',
@@ -328,7 +335,8 @@ function BoxMask({ box, index }: { box: any; index: number }) {
         width: '100%',
         height: '100%',
         opacity: 0.5,
-        pointerEvents: 'none'
+        pointerEvents: 'none',
+        transition: 'opacity 0.2s ease'
       }}
     />
   );

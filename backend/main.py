@@ -42,6 +42,84 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 # Create database tables on startup
 create_tables()
 
+def convert_image_to_png_base64(image_data: bytes, max_size: int = 640) -> str:
+    """
+    Convert any image format to PNG and return as base64 string.
+    
+    Args:
+        image_data: Raw image bytes in any format
+        max_size: Maximum dimension for resizing (default 640px)
+        
+    Returns:
+        Clean base64 string of PNG image
+    """
+    try:
+        # Open image from bytes
+        image = Image.open(io.BytesIO(image_data))
+        original_format = image.format
+        logger.info(f"Image loaded: {image.width}x{image.height}, format: {original_format}, mode: {image.mode}")
+        
+        # Convert to RGB mode for maximum compatibility
+        # This handles RGBA, CMYK, LA, P (palette), 1 (bitmap), etc.
+        if image.mode != 'RGB':
+            logger.info(f"Converting image from {image.mode} to RGB")
+            if image.mode in ('RGBA', 'LA'):
+                # For images with transparency, create white background
+                background = Image.new('RGB', image.size, (255, 255, 255))
+                if image.mode == 'RGBA':
+                    background.paste(image, mask=image.split()[-1])  # Use alpha channel as mask
+                else:  # LA mode
+                    background.paste(image, mask=image.split()[-1])
+                image = background
+            else:
+                # For other modes (P, CMYK, 1, etc.), direct conversion
+                image = image.convert('RGB')
+        
+        # Resize if needed (max dimension)
+        if image.width > max_size or image.height > max_size:
+            scale = min(max_size / image.width, max_size / image.height)
+            new_width = int(image.width * scale)
+            new_height = int(image.height * scale)
+            image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            logger.info(f"Image resized to: {new_width}x{new_height}")
+        
+        # Convert to PNG format
+        buffered = io.BytesIO()
+        image.save(buffered, format="PNG", optimize=True)
+        img_base64 = base64.b64encode(buffered.getvalue()).decode()
+        
+        logger.info(f"Image converted: {original_format} -> PNG, base64 length: {len(img_base64)}")
+        return img_base64
+        
+    except Exception as e:
+        logger.error(f"Failed to convert image to PNG: {e}")
+        raise e
+
+def clean_base64_for_gemini(base64_string: str) -> str:
+    """
+    Ensure base64 string is clean for Gemini API by removing any data URL prefix.
+    
+    Args:
+        base64_string: Base64 string that might contain data URL prefix
+        
+    Returns:
+        Clean base64 string without any prefix
+    """
+    # Check if the string starts with a data URL prefix
+    if base64_string.startswith('data:'):
+        # Find the comma that separates the prefix from the base64 data
+        comma_index = base64_string.find(',')
+        if comma_index != -1:
+            # Return everything after the comma
+            clean_base64 = base64_string[comma_index + 1:]
+            logger.info(f"Stripped data URL prefix. Original length: {len(base64_string)}, Clean length: {len(clean_base64)}")
+            return clean_base64
+        else:
+            logger.warning("Found data: prefix but no comma, using original string")
+            return base64_string
+    
+    return base64_string
+
 # Models
 class Point(BaseModel):
     x: float
@@ -116,24 +194,9 @@ async def analyze_image(
     logger.info(f"Starting analysis: {detect_type} for '{target_prompt}'")
     
     try:
-        # Read and process image
+        # Read and convert image to PNG
         image_data = await file.read()
-        image = Image.open(io.BytesIO(image_data))
-        logger.info(f"Image loaded: {image.width}x{image.height}")
-        
-        # Resize image if needed (max 640px)
-        max_size = 640
-        if image.width > max_size or image.height > max_size:
-            scale = min(max_size / image.width, max_size / image.height)
-            new_width = int(image.width * scale)
-            new_height = int(image.height * scale)
-            image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-            logger.info(f"Image resized to: {new_width}x{new_height}")
-        
-        # Convert to base64
-        buffered = io.BytesIO()
-        image.save(buffered, format="PNG")
-        img_base64 = base64.b64encode(buffered.getvalue()).decode()
+        img_base64 = convert_image_to_png_base64(image_data)
         
         # Choose model based on detection type
         model_name = "gemini-2.0-flash" if detect_type == "3D bounding boxes" else "gemini-2.5-flash"
@@ -342,11 +405,13 @@ async def analyze_with_prompt_engineering(
         generation_config.thinking_budget = 0
     
     logger.info("Sending fallback request to Gemini...")
+    # Clean base64 data to ensure it doesn't have any data URL prefix
+    clean_base64 = clean_base64_for_gemini(img_base64)
     response = model.generate_content(
         [
             {
                 "mime_type": "image/png",
-                "data": img_base64
+                "data": clean_base64
             },
             prompt
         ],
@@ -658,15 +723,9 @@ async def save_analysis(
     logger.info(f"Saving analysis results: {detect_type} for '{target_prompt}'")
     
     try:
-        # Read and process image
+        # Read and convert image to PNG
         image_data = await file.read()
-        image = Image.open(io.BytesIO(image_data))
-        logger.info(f"Image loaded: {image.width}x{image.height}")
-        
-        # Convert to base64
-        buffered = io.BytesIO()
-        image.save(buffered, format="PNG")
-        img_base64 = base64.b64encode(buffered.getvalue()).decode()
+        img_base64 = convert_image_to_png_base64(image_data)
         
         # Parse results JSON
         try:

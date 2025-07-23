@@ -1,7 +1,7 @@
 'use client';
 
 import { useAtom } from 'jotai';
-import { DetectTypeAtom } from '@/lib/atoms';
+import { DetectTypeAtom, RevealOnHoverModeAtom } from '@/lib/atoms';
 import { DetectTypes } from '@/lib/types';
 
 const detectTypes: DetectTypes[] = [
@@ -13,6 +13,7 @@ const detectTypes: DetectTypes[] = [
 
 export default function DetectionTypeSelector() {
   const [detectType, setDetectType] = useAtom(DetectTypeAtom);
+  const [revealOnHover, setRevealOnHover] = useAtom(RevealOnHoverModeAtom);
 
   return (
     <div>
@@ -46,6 +47,35 @@ export default function DetectionTypeSelector() {
             <span style={{ fontSize: '14px' }}>{type}</span>
           </label>
         ))}
+      </div>
+      
+      {/* Reveal on Hover Toggle */}
+      <div style={{ marginTop: '16px', padding: '12px', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            cursor: 'pointer',
+            fontSize: '14px'
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={revealOnHover}
+            onChange={(e) => setRevealOnHover(e.target.checked)}
+            style={{ margin: 0 }}
+          />
+          <span>🎯 Reveal on hover</span>
+        </label>
+        <p style={{ 
+          fontSize: '12px', 
+          color: 'var(--text-color-secondary)', 
+          margin: '4px 0 0 0',
+          lineHeight: '1.3'
+        }}>
+          Highlight individual objects when hovering over them
+        </p>
       </div>
     </div>
   );
