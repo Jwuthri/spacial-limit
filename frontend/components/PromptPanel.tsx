@@ -25,141 +25,277 @@ export default function PromptPanel({ onAnalyze }: PromptPanelProps) {
   const is2d = detectType === '2D bounding boxes';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <div>
-        <h3 style={{ marginBottom: '12px', fontSize: '16px', fontWeight: 'bold' }}>
+    <div>
+      <div style={{ marginBottom: '20px' }}>
+        <h3 style={{ 
+          fontSize: '18px',
+          fontWeight: '600',
+          color: 'var(--text-primary)',
+          marginBottom: '8px'
+        }}>
           Prompt Configuration
         </h3>
+        <p style={{
+          fontSize: '14px',
+          color: 'var(--text-secondary)',
+          marginBottom: '20px',
+          lineHeight: '1.4'
+        }}>
+          Configure what the AI should detect and how to label the results
+        </p>
         
-        <div style={{ marginBottom: '12px' }}>
-          <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px' }}>
-            {is2d ? 'Detect' : 'What to detect:'}
+        {/* Main Detection Prompt */}
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ 
+            display: 'block', 
+            marginBottom: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            color: 'var(--text-primary)'
+          }}>
+            <span style={{ fontSize: '16px', marginRight: '8px' }}>🎯</span>
+            {is2d ? 'What to detect' : 'Detection target'}
           </label>
-          <textarea
-            placeholder="What kind of things do you want to detect?"
-            rows={2}
-            value={targetPrompt}
-            onChange={(e) => setTargetPrompt(e.target.value)}
-            disabled={isLoading}
-            style={{
-              width: '100%',
-              resize: 'none',
-              fontSize: '14px'
-            }}
-          />
+          <div style={{ position: 'relative' }}>
+            <textarea
+              placeholder={is2d ? 
+                "e.g., people, cars, animals, furniture..." : 
+                "Describe what you want to detect in the image..."
+              }
+              rows={3}
+              value={targetPrompt}
+              onChange={(e) => setTargetPrompt(e.target.value)}
+              disabled={isLoading}
+              style={{
+                width: '100%',
+                resize: 'none',
+                fontSize: '14px',
+                lineHeight: '1.5',
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border-primary)',
+                borderRadius: '12px',
+                padding: '16px',
+                transition: 'all 0.2s ease'
+              }}
+            />
+            {targetPrompt && (
+              <div style={{
+                position: 'absolute',
+                bottom: '12px',
+                right: '16px',
+                fontSize: '12px',
+                color: 'var(--text-muted)',
+                background: 'var(--bg-card)',
+                padding: '4px 8px',
+                borderRadius: '6px'
+              }}>
+                {targetPrompt.length} chars
+              </div>
+            )}
+          </div>
         </div>
 
+        {/* Label Prompt (for 2D only) */}
         {is2d && (
-          <div style={{ marginBottom: '12px' }}>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px' }}>
-              Label each one with: (optional)
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: '8px',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: 'var(--text-primary)'
+            }}>
+              <span style={{ fontSize: '16px', marginRight: '8px' }}>🏷️</span>
+              Label format (optional)
             </label>
             <textarea
               rows={2}
-              placeholder="How do you want to label the things?"
+              placeholder="e.g., person-1, car-red, dog-small..."
               value={labelPrompt}
               onChange={(e) => setLabelPrompt(e.target.value)}
               disabled={isLoading}
               style={{
                 width: '100%',
                 resize: 'none',
-                fontSize: '14px'
+                fontSize: '14px',
+                lineHeight: '1.5',
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border-primary)',
+                borderRadius: '12px',
+                padding: '16px',
+                transition: 'all 0.2s ease'
               }}
             />
           </div>
         )}
 
+        {/* Language Setting (for Segmentation) */}
         {detectType === 'Segmentation masks' && (
-          <div style={{ marginBottom: '12px' }}>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px' }}>
-              Output labels in language: (e.g. Deutsch, Français, Español, 中文)
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: '8px',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: 'var(--text-primary)'
+            }}>
+              <span style={{ fontSize: '16px', marginRight: '8px' }}>🌍</span>
+              Output language
             </label>
-            <textarea
-              rows={1}
-              placeholder="e.g., Deutsch, Français, Español"
+            <input
+              type="text"
+              placeholder="e.g., English, Deutsch, Français, Español, 中文"
               value={segmentationLanguage}
               onChange={(e) => setSegmentationLanguage(e.target.value)}
               disabled={isLoading}
               style={{
                 width: '100%',
-                resize: 'none',
-                fontSize: '14px'
+                fontSize: '14px',
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border-primary)',
+                borderRadius: '12px',
+                padding: '16px',
+                transition: 'all 0.2s ease'
               }}
             />
           </div>
         )}
 
-        <div style={{ marginBottom: '16px' }}>
+        {/* Temperature Control */}
+        <div style={{ marginBottom: '20px' }}>
           <label style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px',
-            fontSize: '14px'
+            display: 'block', 
+            marginBottom: '12px',
+            fontSize: '14px',
+            fontWeight: '500',
+            color: 'var(--text-primary)'
           }}>
-            Temperature:
-            <input
-              type="range"
-              min="0"
-              max="2"
-              step="0.05"
-              value={temperature}
-              onChange={(e) => setTemperature(Number(e.target.value))}
-              disabled={isLoading}
-              style={{ flex: 1 }}
-            />
-            <span style={{ minWidth: '40px', textAlign: 'right' }}>
-              {temperature.toFixed(2)}
-            </span>
+            <span style={{ fontSize: '16px', marginRight: '8px' }}>🌡️</span>
+            AI Creativity Level
           </label>
-        </div>
-      </div>
-
-      {onAnalyze && (
-        <button
-          onClick={onAnalyze}
-          disabled={isLoading}
-          style={{
-            background: isLoading ? '#ccc' : '#3B68FF',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '6px',
-            fontSize: '16px',
-            cursor: isLoading ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px'
-          }}
-        >
-          {isLoading ? (
-            <>
-              <div
-                style={{
-                  width: '20px',
-                  height: '20px',
-                  border: '2px solid #ffffff',
-                  borderTop: '2px solid transparent',
-                  borderRadius: '50%',
-                  animation: 'spin 1s linear infinite'
+          
+          <div style={{
+            padding: '20px',
+            background: 'var(--bg-secondary)',
+            borderRadius: '12px',
+            border: '1px solid var(--border-primary)'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '16px',
+              marginBottom: '12px'
+            }}>
+              <span style={{ 
+                fontSize: '12px', 
+                color: 'var(--text-muted)',
+                fontWeight: '500'
+              }}>
+                Conservative
+              </span>
+              <input
+                type="range"
+                min="0"
+                max="2"
+                step="0.05"
+                value={temperature}
+                onChange={(e) => setTemperature(Number(e.target.value))}
+                disabled={isLoading}
+                style={{ 
+                  flex: 1,
+                  height: '6px'
                 }}
               />
-              Analyzing...
-            </>
-          ) : (
-            'Analyze Image'
-          )}
-        </button>
-      )}
+              <span style={{ 
+                fontSize: '12px', 
+                color: 'var(--text-muted)',
+                fontWeight: '500'
+              }}>
+                Creative
+              </span>
+            </div>
+            
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{
+                fontSize: '13px',
+                color: 'var(--text-secondary)'
+              }}>
+                {temperature < 0.5 ? 
+                  'More precise, consistent results' : 
+                  temperature > 1.5 ? 
+                  'More creative, varied results' : 
+                  'Balanced precision and creativity'
+                }
+              </div>
+              <div style={{
+                background: 'var(--bg-card)',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: 'var(--primary)',
+                minWidth: '50px',
+                textAlign: 'center'
+              }}>
+                {temperature.toFixed(2)}
+              </div>
+            </div>
+          </div>
+        </div>
 
-      {onAnalyze && (
-        <style jsx>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-      )}
+        {/* Pro Tips */}
+        <div style={{
+          padding: '16px',
+          background: 'linear-gradient(135deg, var(--bg-secondary), var(--bg-card))',
+          borderRadius: '12px',
+          border: '1px solid var(--border-secondary)',
+          position: 'relative',
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            width: '40px',
+            height: '40px',
+            background: 'linear-gradient(135deg, var(--primary)30, transparent)',
+            borderRadius: '0 12px 0 40px'
+          }} />
+          
+          <div style={{ position: 'relative' }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              marginBottom: '8px' 
+            }}>
+              <span style={{ fontSize: '16px' }}>💡</span>
+              <span style={{ 
+                fontSize: '14px', 
+                fontWeight: '600',
+                color: 'var(--text-primary)'
+              }}>
+                Pro Tips
+              </span>
+            </div>
+            <ul style={{ 
+              fontSize: '13px',
+              color: 'var(--text-secondary)',
+              lineHeight: '1.4',
+              margin: 0,
+              paddingLeft: '20px'
+            }}>
+              <li>Be specific: "red cars" instead of "vehicles"</li>
+              <li>Use descriptive terms: "people walking" vs "people"</li>
+              <li>Lower temperature for consistent detection</li>
+            </ul>
+          </div>
+        </div>
+      </div>
     </div>
   );
 } 

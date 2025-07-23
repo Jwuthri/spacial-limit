@@ -92,17 +92,26 @@ export default function ImageCanvas() {
   };
 
   return (
-    <div ref={containerRef} style={{ width: '100%', flex: 1, position: 'relative' }}>
+    <div ref={containerRef} style={{ 
+      width: '100%', 
+      height: '100%',
+      flex: 1, 
+      position: 'relative', 
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '400px'
+    }}>
       {imageSrc && (
         <img
           src={imageSrc}
           style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'contain'
+            maxWidth: '100%',
+            maxHeight: '100%',
+            width: 'auto',
+            height: 'auto',
+            objectFit: 'contain',
+            display: 'block'
           }}
           alt="Uploaded image"
           onLoad={(e: any) => {
@@ -124,6 +133,8 @@ export default function ImageCanvas() {
           transform: 'translate(-50%, -50%)',
           width: boundingBoxContainer.width,
           height: boundingBoxContainer.height,
+          zIndex: 10,
+          pointerEvents: imageSrc ? 'auto' : 'none'
         }}
         onPointerMove={handlePointerMove}
         onPointerEnter={(e) => {
@@ -147,23 +158,34 @@ export default function ImageCanvas() {
               className={`bbox ${i === hoveredBox ? 'reveal' : ''}`}
               style={{
                 position: 'absolute',
-                border: '2px solid #3B68FF',
+                border: `3px solid ${i === hoveredBox ? 'var(--primary-light)' : 'var(--primary)'}`,
+                borderRadius: '8px',
                 top: `${box.y * 100}%`,
                 left: `${box.x * 100}%`,
                 width: `${box.width * 100}%`,
                 height: `${box.height * 100}%`,
+                boxShadow: i === hoveredBox ? 'var(--shadow-glow)' : 'none',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
               }}
             >
               <div
                 style={{
-                  background: '#3B68FF',
+                  background: 'var(--gradient-primary)',
                   color: 'white',
                   position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  fontSize: '14px',
-                  padding: '2px 6px',
-                  whiteSpace: 'nowrap'
+                  left: '0px',
+                  top: '0px',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  padding: '4px 8px',
+                  borderRadius: '0 0 6px 0',
+                  whiteSpace: 'nowrap',
+                  boxShadow: 'var(--shadow-md)',
+                  backdropFilter: 'blur(10px)',
+                  zIndex: 10,
+                  maxWidth: '90%',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
                 }}
               >
                 {box.label}
@@ -179,25 +201,37 @@ export default function ImageCanvas() {
               className={`bbox ${i === hoveredBox ? 'reveal' : ''}`}
               style={{
                 position: 'absolute',
-                border: '2px solid #3B68FF',
+                border: `3px solid ${i === hoveredBox ? 'var(--secondary)' : 'var(--primary)'}`,
+                borderRadius: '12px',
                 top: `${box.y * 100}%`,
                 left: `${box.x * 100}%`,
                 width: `${box.width * 100}%`,
                 height: `${box.height * 100}%`,
+                boxShadow: i === hoveredBox ? '0 0 20px rgba(6, 182, 212, 0.4)' : 'none',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                overflow: 'hidden'
               }}
             >
               {box.imageData && <BoxMask box={box} index={i} />}
               <div style={{ width: '100%', top: 0, height: 0, position: 'absolute' }}>
                 <div
                   style={{
-                    background: '#3B68FF',
+                    background: 'var(--gradient-secondary)',
                     color: 'white',
                     position: 'absolute',
-                    left: '-2px',
-                    bottom: 0,
-                    fontSize: '14px',
-                    padding: '2px 6px',
-                    whiteSpace: 'nowrap'
+                    left: '0px',
+                    top: '0px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    padding: '4px 8px',
+                    borderRadius: '0 0 6px 0',
+                    whiteSpace: 'nowrap',
+                    boxShadow: 'var(--shadow-md)',
+                    backdropFilter: 'blur(10px)',
+                    zIndex: 10,
+                    maxWidth: '90%',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
                   }}
                 >
                   {box.label}
@@ -216,41 +250,67 @@ export default function ImageCanvas() {
                 position: 'absolute',
                 left: `${point.point.x * 100}%`,
                 top: `${point.point.y * 100}%`,
-                width: '20px',
-                height: '20px',
+                width: '24px',
+                height: '24px',
                 transform: 'translate(-50%, -50%)'
               }}
             >
+              {/* Point Label */}
               <div
                 style={{
                   position: 'absolute',
-                  background: '#3B68FF',
-                  textAlign: 'center',
+                  background: 'var(--gradient-accent)',
                   color: 'white',
                   fontSize: '12px',
-                  padding: '2px 6px',
-                  bottom: '20px',
-                  borderRadius: '2px',
+                  fontWeight: '600',
+                  padding: '6px 10px',
+                  bottom: '28px',
+                  borderRadius: '8px',
                   transform: 'translateX(-50%)',
                   left: '50%',
-                  whiteSpace: 'nowrap'
+                  whiteSpace: 'nowrap',
+                  boxShadow: 'var(--shadow-md)',
+                  backdropFilter: 'blur(10px)'
                 }}
               >
                 {point.label}
               </div>
+              
+              {/* Point Marker */}
               <div
                 style={{
                   position: 'absolute',
-                  width: '16px',
-                  height: '16px',
-                  background: '#3B68FF',
+                  width: '20px',
+                  height: '20px',
+                  background: 'var(--gradient-accent)',
                   borderRadius: '50%',
-                  border: '2px solid white',
+                  border: '3px solid white',
                   left: '50%',
                   top: '50%',
-                  transform: 'translate(-50%, -50%)'
+                  transform: 'translate(-50%, -50%)',
+                  boxShadow: i === hoveredBox ? 
+                    '0 0 20px rgba(245, 158, 11, 0.6), var(--shadow-lg)' : 
+                    'var(--shadow-md)',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}
               />
+              
+              {/* Pulse animation for active point */}
+              {i === hoveredBox && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    width: '40px',
+                    height: '40px',
+                    border: '2px solid var(--accent)',
+                    borderRadius: '50%',
+                    left: '50%',
+                    top: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    animation: 'pulse 2s infinite'
+                  }}
+                />
+              )}
             </div>
           ))}
 
@@ -258,30 +318,52 @@ export default function ImageCanvas() {
         {detectType === '3D bounding boxes' &&
           boundingBoxes3D.map((box, i) => (
             <div key={i} style={{ position: 'absolute' }}>
-              {/* Simple 3D box representation - could be enhanced */}
+              {/* Enhanced 3D box representation */}
               <div
                 className={`bbox ${i === hoveredBox ? 'reveal' : ''}`}
                 style={{
                   position: 'absolute',
-                  border: '2px solid #3B68FF',
-                  width: '100px',
-                  height: '100px',
+                  border: `3px solid ${i === hoveredBox ? 'var(--primary-light)' : 'var(--primary)'}`,
+                  borderRadius: '12px',
+                  width: '120px',
+                  height: '120px',
                   left: '50%',
                   top: '50%',
-                  transform: 'translate(-50%, -50%)'
+                  transform: 'translate(-50%, -50%)',
+                  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.05))',
+                  backdropFilter: 'blur(5px)',
+                  boxShadow: i === hoveredBox ? 'var(--shadow-glow)' : 'var(--shadow-md)',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}
               >
+                {/* 3D Effect Lines */}
                 <div
                   style={{
-                    background: '#3B68FF',
+                    position: 'absolute',
+                    top: '-8px',
+                    left: '-8px',
+                    right: '8px',
+                    bottom: '8px',
+                    border: `2px solid ${i === hoveredBox ? 'var(--primary-light)' : 'var(--primary)'}`,
+                    borderRadius: '8px',
+                    opacity: 0.6
+                  }}
+                />
+                
+                <div
+                  style={{
+                    background: 'var(--gradient-primary)',
                     color: 'white',
-                    fontSize: '12px',
-                    padding: '2px 6px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    padding: '8px 12px',
                     position: 'absolute',
                     top: '50%',
                     left: '50%',
                     transform: 'translate(-50%, -50%)',
-                    whiteSpace: 'nowrap'
+                    whiteSpace: 'nowrap',
+                    borderRadius: '8px',
+                    boxShadow: 'var(--shadow-md)'
                   }}
                 >
                   {box.label}

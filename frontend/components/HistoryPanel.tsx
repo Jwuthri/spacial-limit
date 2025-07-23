@@ -141,164 +141,434 @@ export default function HistoryPanel({ isOpen, onClose }: HistoryPanelProps) {
       left: 0,
       right: 0,
       bottom: 0,
-      background: 'rgba(0, 0, 0, 0.5)',
+      background: 'rgba(0, 0, 0, 0.7)',
+      backdropFilter: 'blur(10px)',
       zIndex: 1000,
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'center'
+      justifyContent: 'center',
+      padding: '20px'
     }}>
-      <div style={{
-        background: 'var(--background)',
-        border: '1px solid var(--border-color)',
-        borderRadius: '8px',
-        width: '90%',
-        maxWidth: '1200px',
-        height: '80%',
+      <div className="glass-card scale-in" style={{
+        width: '95%',
+        maxWidth: '1400px',
+        height: '85%',
+        maxHeight: '900px',
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        position: 'relative',
+        overflow: 'hidden'
       }}>
-        {/* Header */}
+        {/* Elegant Header */}
         <div style={{
-          padding: '20px',
-          borderBottom: '1px solid var(--border-color)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
+          padding: '32px',
+          borderBottom: '1px solid var(--border-primary)',
+          background: 'linear-gradient(135deg, var(--bg-card), var(--bg-secondary))',
+          position: 'relative'
         }}>
-          <h2 style={{ margin: 0, fontSize: '20px' }}>Prediction History</h2>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              style={{ padding: '8px', borderRadius: '4px' }}
-            >
-              <option value="">All Types</option>
-              <option value="2D bounding boxes">2D Bounding Boxes</option>
-              <option value="3D bounding boxes">3D Bounding Boxes</option>
-              <option value="Segmentation masks">Segmentation Masks</option>
-              <option value="Points">Points</option>
-            </select>
-            <button onClick={onClose} style={{ fontSize: '18px', padding: '8px 12px' }}>
-              ✕
-            </button>
+          {/* Background decoration */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            width: '100px',
+            height: '100px',
+            background: 'linear-gradient(135deg, var(--primary)20, transparent)',
+            borderRadius: '0 16px 0 100px'
+          }} />
+          
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            position: 'relative'
+          }}>
+            <div>
+              <h2 style={{ 
+                margin: 0, 
+                fontSize: '28px',
+                fontWeight: '700',
+                background: 'var(--gradient-primary)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                marginBottom: '8px'
+              }}>
+                Analysis History
+              </h2>
+              <p style={{
+                fontSize: '16px',
+                color: 'var(--text-secondary)',
+                margin: 0
+              }}>
+                Browse and restore your previous computer vision analyses
+              </p>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                style={{ 
+                  padding: '12px 16px',
+                  borderRadius: '12px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  minWidth: '180px'
+                }}
+              >
+                <option value="">All Detection Types</option>
+                <option value="2D bounding boxes">📦 2D Bounding Boxes</option>
+                <option value="3D bounding boxes">🎲 3D Bounding Boxes</option>
+                <option value="Segmentation masks">🎨 Segmentation Masks</option>
+                <option value="Points">📍 Points</option>
+              </select>
+              
+              <button 
+                onClick={onClose} 
+                className="btn-ghost"
+                style={{ 
+                  fontSize: '20px', 
+                  padding: '12px',
+                  borderRadius: '12px',
+                  width: '48px',
+                  height: '48px'
+                }}
+              >
+                ✕
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Content */}
+        {/* Main Content */}
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
           {/* History List */}
           <div style={{
-            width: '40%',
-            borderRight: '1px solid var(--border-color)',
+            width: '45%',
+            borderRight: '1px solid var(--border-primary)',
             overflow: 'auto',
-            padding: '16px'
+            padding: '24px',
+            background: 'var(--bg-secondary)'
           }}>
             {loading ? (
-              <div style={{ textAlign: 'center', padding: '20px' }}>Loading...</div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {history.map((item) => (
-                  <div
-                    key={item.id}
-                    style={{
-                      padding: '12px',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      background: selectedPrediction?.id === item.id ? 'rgba(59, 104, 255, 0.1)' : 'transparent'
-                    }}
-                    onClick={() => fetchPredictionDetail(item.id)}
-                  >
-                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-                      {item.image_name}
-                    </div>
-                    <div style={{ fontSize: '14px', color: 'var(--text-color-secondary)' }}>
-                      {item.detect_type} • {item.result_count} results
-                    </div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-color-secondary)', marginTop: '4px' }}>
-                      {new Date(item.created_at).toLocaleString()}
-                      {item.processing_time && ` • ${item.processing_time.toFixed(2)}s`}
-                    </div>
+              <div style={{ 
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '200px',
+                flexDirection: 'column',
+                gap: '16px'
+              }}>
+                <div 
+                  className="spinner"
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    border: '3px solid var(--border-primary)',
+                    borderTop: '3px solid var(--primary)',
+                    borderRadius: '50%'
+                  }}
+                />
+                <span style={{ color: 'var(--text-secondary)' }}>Loading history...</span>
+              </div>
+            ) : history.length === 0 ? (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '200px',
+                flexDirection: 'column',
+                gap: '16px',
+                color: 'var(--text-secondary)'
+              }}>
+                <div style={{ fontSize: '48px' }}>📂</div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>
+                    No analysis history yet
                   </div>
-                ))}
+                  <div style={{ fontSize: '14px' }}>
+                    Run your first analysis to see results here
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {history.map((item) => {
+                  const isSelected = selectedPrediction?.id === item.id;
+                  return (
+                    <div
+                      key={item.id}
+                      className="fade-in"
+                      style={{
+                        padding: '20px',
+                        background: isSelected ? 'var(--bg-hover)' : 'var(--bg-card)',
+                        border: `2px solid ${isSelected ? 'var(--primary)' : 'var(--border-primary)'}`,
+                        borderRadius: '16px',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        transform: isSelected ? 'translateY(-2px)' : 'translateY(0)',
+                        boxShadow: isSelected ? 'var(--shadow-lg)' : 'var(--shadow-sm)',
+                        position: 'relative',
+                        overflow: 'hidden'
+                      }}
+                      onClick={() => fetchPredictionDetail(item.id)}
+                    >
+                      {/* Selection indicator */}
+                      {isSelected && (
+                        <div style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: '3px',
+                          background: 'var(--gradient-primary)'
+                        }} />
+                      )}
+                      
+                      <div style={{ position: 'relative' }}>
+                        <div style={{ 
+                          fontWeight: '600', 
+                          marginBottom: '8px',
+                          fontSize: '16px',
+                          color: 'var(--text-primary)'
+                        }}>
+                          {item.image_name}
+                        </div>
+                        
+                        <div style={{ 
+                          fontSize: '14px', 
+                          color: 'var(--text-secondary)',
+                          marginBottom: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          <span>
+                            {item.detect_type === '2D bounding boxes' ? '📦' :
+                             item.detect_type === '3D bounding boxes' ? '🎲' :
+                             item.detect_type === 'Segmentation masks' ? '🎨' : '📍'}
+                          </span>
+                          <span>{item.detect_type}</span>
+                          <span>•</span>
+                          <span style={{ 
+                            background: 'var(--primary)',
+                            color: 'white',
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            fontSize: '12px',
+                            fontWeight: '600'
+                          }}>
+                            {item.result_count} results
+                          </span>
+                        </div>
+                        
+                        <div style={{ 
+                          fontSize: '13px', 
+                          color: 'var(--text-muted)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px'
+                        }}>
+                          <span>📅 {new Date(item.created_at).toLocaleDateString()}</span>
+                          <span>🕒 {new Date(item.created_at).toLocaleTimeString()}</span>
+                          {item.processing_time && (
+                            <span>⚡ {item.processing_time.toFixed(2)}s</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
 
           {/* Detail View */}
-          <div style={{ flex: 1, padding: '16px', overflow: 'auto' }}>
+          <div style={{ flex: 1, padding: '24px', overflow: 'auto' }}>
             {selectedPrediction ? (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <h3 style={{ margin: 0 }}>{selectedPrediction.image_name}</h3>
-                  <div style={{ display: 'flex', gap: '8px' }}>
+              <div className="fade-in">
+                {/* Header with actions */}
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'flex-start', 
+                  marginBottom: '24px' 
+                }}>
+                  <div>
+                    <h3 style={{ 
+                      margin: 0,
+                      fontSize: '24px',
+                      fontWeight: '700',
+                      color: 'var(--text-primary)',
+                      marginBottom: '8px'
+                    }}>
+                      {selectedPrediction.image_name}
+                    </h3>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      fontSize: '14px',
+                      color: 'var(--text-secondary)'
+                    }}>
+                      <span>📅 {new Date(selectedPrediction.created_at).toLocaleString()}</span>
+                      {selectedPrediction.processing_time && (
+                        <span>⚡ {selectedPrediction.processing_time.toFixed(2)}s processing</span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '12px' }}>
                     <button
                       onClick={() => loadPrediction(selectedPrediction)}
+                      className="btn-primary"
                       style={{
-                        background: '#3B68FF',
-                        color: 'white',
-                        border: 'none',
-                        padding: '8px 16px',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
+                        padding: '12px 20px',
+                        fontWeight: '600'
                       }}
                     >
-                      Load
+                      <span style={{ marginRight: '8px' }}>🔄</span>
+                      Load Analysis
                     </button>
                     <button
                       onClick={() => deletePrediction(selectedPrediction.id)}
+                      className="btn-secondary"
                       style={{
-                        background: '#dc3545',
-                        color: 'white',
-                        border: 'none',
-                        padding: '8px 16px',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
+                        padding: '12px 20px',
+                        color: 'var(--error)',
+                        borderColor: 'var(--error)'
                       }}
                     >
+                      <span style={{ marginRight: '8px' }}>🗑️</span>
                       Delete
                     </button>
                   </div>
                 </div>
 
-                {/* Image */}
-                <div style={{ marginBottom: '16px' }}>
+                {/* Image Preview */}
+                <div style={{ 
+                  marginBottom: '24px',
+                  borderRadius: '16px',
+                  overflow: 'hidden',
+                  border: '1px solid var(--border-primary)'
+                }}>
                   <img
                     src={selectedPrediction.image_data}
                     alt={selectedPrediction.image_name}
                     style={{
-                      maxWidth: '100%',
-                      maxHeight: '300px',
+                      width: '100%',
+                      maxHeight: '400px',
                       objectFit: 'contain',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: '4px'
+                      background: 'var(--bg-secondary)'
                     }}
                   />
                 </div>
 
-                {/* Details */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '14px' }}>
-                  <div><strong>Type:</strong> {selectedPrediction.detect_type}</div>
-                  <div><strong>Model:</strong> {selectedPrediction.model_used}</div>
-                  <div><strong>Prompt:</strong> {selectedPrediction.target_prompt}</div>
-                  <div><strong>Temperature:</strong> {selectedPrediction.temperature}</div>
-                  <div><strong>Results:</strong> {selectedPrediction.results.length} items</div>
-                  <div><strong>Processing:</strong> {selectedPrediction.processing_time?.toFixed(2)}s</div>
+                {/* Analysis Details */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                  gap: '16px',
+                  marginBottom: '24px'
+                }}>
+                  <div className="glass-card" style={{ padding: '16px' }}>
+                    <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                      Detection Type
+                    </div>
+                    <div style={{ fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>
+                      {selectedPrediction.detect_type}
+                    </div>
+                  </div>
+                  
+                  <div className="glass-card" style={{ padding: '16px' }}>
+                    <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                      AI Model
+                    </div>
+                    <div style={{ fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>
+                      {selectedPrediction.model_used}
+                    </div>
+                  </div>
+                  
+                  <div className="glass-card" style={{ padding: '16px' }}>
+                    <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                      Results Found
+                    </div>
+                    <div style={{ fontSize: '16px', fontWeight: '600', color: 'var(--primary)' }}>
+                      {selectedPrediction.results.length} items
+                    </div>
+                  </div>
+                  
+                  <div className="glass-card" style={{ padding: '16px' }}>
+                    <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                      Temperature
+                    </div>
+                    <div style={{ fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>
+                      {selectedPrediction.temperature.toFixed(2)}
+                    </div>
+                  </div>
                 </div>
 
-                {/* Results */}
-                <div style={{ marginTop: '16px' }}>
-                  <h4>Results:</h4>
-                  <pre style={{
-                    background: 'var(--input-color)',
-                    padding: '12px',
-                    borderRadius: '4px',
-                    fontSize: '12px',
-                    overflow: 'auto',
-                    maxHeight: '200px'
+                {/* Prompts */}
+                <div style={{ marginBottom: '24px' }}>
+                  <h4 style={{ 
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: 'var(--text-primary)',
+                    marginBottom: '16px'
                   }}>
-                    {JSON.stringify(selectedPrediction.results, null, 2)}
-                  </pre>
+                    Prompts Used
+                  </h4>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div className="glass-card" style={{ padding: '16px' }}>
+                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                        🎯 Target Prompt
+                      </div>
+                      <div style={{ fontSize: '15px', color: 'var(--text-primary)', lineHeight: '1.4' }}>
+                        {selectedPrediction.target_prompt}
+                      </div>
+                    </div>
+                    
+                    {selectedPrediction.label_prompt && (
+                      <div className="glass-card" style={{ padding: '16px' }}>
+                        <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                          🏷️ Label Prompt
+                        </div>
+                        <div style={{ fontSize: '15px', color: 'var(--text-primary)', lineHeight: '1.4' }}>
+                          {selectedPrediction.label_prompt}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Results Preview */}
+                <div>
+                  <h4 style={{ 
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: 'var(--text-primary)',
+                    marginBottom: '16px'
+                  }}>
+                    Detection Results
+                  </h4>
+                  
+                  <div className="glass-card" style={{ padding: '20px' }}>
+                    <pre style={{
+                      background: 'var(--bg-secondary)',
+                      padding: '16px',
+                      borderRadius: '12px',
+                      fontSize: '13px',
+                      overflow: 'auto',
+                      maxHeight: '300px',
+                      color: 'var(--text-primary)',
+                      border: '1px solid var(--border-primary)',
+                      lineHeight: '1.4'
+                    }}>
+                      {JSON.stringify(selectedPrediction.results, null, 2)}
+                    </pre>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -307,9 +577,19 @@ export default function HistoryPanel({ isOpen, onClose }: HistoryPanelProps) {
                 alignItems: 'center',
                 justifyContent: 'center',
                 height: '100%',
-                color: 'var(--text-color-secondary)'
+                flexDirection: 'column',
+                gap: '20px',
+                color: 'var(--text-secondary)'
               }}>
-                Select a prediction to view details
+                <div style={{ fontSize: '64px' }}>🔍</div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '20px', fontWeight: '600', marginBottom: '8px' }}>
+                    Select an analysis
+                  </div>
+                  <div style={{ fontSize: '16px' }}>
+                    Choose an item from the history to view details
+                  </div>
+                </div>
               </div>
             )}
           </div>
