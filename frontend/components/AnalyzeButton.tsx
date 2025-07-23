@@ -2,11 +2,14 @@
 
 import { useAtom } from 'jotai';
 import { analyzeImageDirect } from '@/lib/gemini';
+import { saveAnalysisToDatabase } from '@/lib/utils';
 import {
   ImageSrcAtom,
   DetectTypeAtom,
   TargetPromptAtom,
+  LabelPromptAtom,
   SegmentationLanguageAtom,
+  TemperatureAtom,
   IsLoadingAtom,
   BoundingBoxes2DAtom,
   BoundingBoxes3DAtom,
@@ -18,7 +21,9 @@ export default function AnalyzeButton() {
   const [imageSrc] = useAtom(ImageSrcAtom);
   const [detectType] = useAtom(DetectTypeAtom);
   const [targetPrompt] = useAtom(TargetPromptAtom);
+  const [labelPrompt] = useAtom(LabelPromptAtom);
   const [segmentationLanguage] = useAtom(SegmentationLanguageAtom);
+  const [temperature] = useAtom(TemperatureAtom);
   const [isLoading, setIsLoading] = useAtom(IsLoadingAtom);
   const [, setBoundingBoxes2D] = useAtom(BoundingBoxes2DAtom);
   const [, setBoundingBoxes3D] = useAtom(BoundingBoxes3DAtom);
@@ -59,6 +64,23 @@ export default function AnalyzeButton() {
       }
 
       console.log('Analysis result:', result);
+
+      // Save to database in the background
+      try {
+        const saveResult = await saveAnalysisToDatabase(
+          imageSrc,
+          detectType,
+          targetPrompt,
+          labelPrompt,
+          segmentationLanguage,
+          temperature,
+          result
+        );
+        console.log('Saved to database:', saveResult);
+      } catch (saveError) {
+        console.warn('Failed to save to database:', saveError);
+        // Don't alert here since the main analysis succeeded
+      }
     } catch (error) {
       console.error('Analysis failed:', error);
       alert('Analysis failed: ' + (error as Error).message);

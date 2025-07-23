@@ -642,6 +642,78 @@ async def delete_prediction(prediction_id: int, db: Session = Depends(get_db)):
     
     return {"message": "Prediction deleted successfully"}
 
+@app.post("/save-analysis")
+async def save_analysis(
+    file: UploadFile = File(...),
+    detect_type: str = Form(...),
+    target_prompt: str = Form("items"),
+    label_prompt: str = Form(""),
+    segmentation_language: str = Form("English"),
+    temperature: float = Form(0.4),
+    results: str = Form(...),  # JSON string of results
+    db: Session = Depends(get_db)
+):
+    """Save analysis results from direct Gemini API call to database"""
+    start_time = time.time()
+    logger.info(f"Saving analysis results: {detect_type} for '{target_prompt}'")
+    
+    try:
+        # Read and process image
+        image_data = await file.read()
+        image = Image.open(io.BytesIO(image_data))
+        logger.info(f"Image loaded: {image.width}x{image.height}")
+        
+        # Convert to base64
+        buffered = io.BytesIO()
+        image.save(buffered, format="PNG")
+        img_base64 = base64.b64encode(buffered.getvalue()).decode()
+        
+        # Parse results JSON
+        try:
+            parsed_results = json.loads(results)
+            logger.info(f"Parsed {len(parsed_results)} results from client")
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse results JSON: {e}")
+            raise HTTPException(status_code=400, detail="Invalid results JSON")
+        
+        # Calculate processing time (just for the save operation)
+        processing_time = time.time() - start_time
+        
+        # Choose model name (same logic as analyze endpoint)
+        model_name = "gemini-2.0-flash" if detect_type == "3D bounding boxes" else "gemini-2.5-flash"
+        
+        # Save to database
+        prediction = Prediction(
+            image_name=file.filename or "unknown",
+            image_data=f"data:image/png;base64,{img_base64}",
+            detect_type=detect_type,
+            target_prompt=target_prompt,
+            label_prompt=label_prompt,
+            segmentation_language=segmentation_language,
+            temperature=temperature,
+            model_used=f"{model_name} (direct)",
+            results=parsed_results,
+            processing_time=processing_time
+        )
+        db.add(prediction)
+        db.commit()
+        db.refresh(prediction)
+        logger.info(f"Saved analysis to database with ID: {prediction.id}")
+        
+        return {
+            "success": True,
+            "prediction_id": prediction.id,
+            "message": "Analysis saved to database successfully"
+        }
+        
+    except Exception as e:
+        processing_time = time.time() - start_time
+        logger.error(f"Failed to save analysis after {processing_time:.2f}s: {str(e)}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000) 
