@@ -7,7 +7,7 @@ import os
 from dotenv import load_dotenv
 import base64
 import io
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import json
 import time
 from datetime import datetime
@@ -42,7 +42,7 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 # Create database tables on startup
 create_tables()
 
-def convert_image_to_png_base64(image_data: bytes, max_size: int = 640) -> str:
+def convert_image_to_png_base64(image_data: bytes, max_size: int = 800, skip_resize: bool = False) -> str:
     """
     Convert any image format to PNG and return as base64 string.
     
@@ -75,13 +75,17 @@ def convert_image_to_png_base64(image_data: bytes, max_size: int = 640) -> str:
                 # For other modes (P, CMYK, 1, etc.), direct conversion
                 image = image.convert('RGB')
         
-        # Resize if needed (max dimension)
-        if image.width > max_size or image.height > max_size:
+        # Resize if needed (max dimension) and skip_resize is False
+        if not skip_resize and (image.width > max_size or image.height > max_size):
             scale = min(max_size / image.width, max_size / image.height)
             new_width = int(image.width * scale)
             new_height = int(image.height * scale)
             image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
             logger.info(f"Image resized to: {new_width}x{new_height}")
+        elif skip_resize:
+            logger.info(f"Skipping backend resize (mobile already resized)")
+        else:
+            logger.info(f"Image size {image.width}x{image.height} is within max_size {max_size}, no resize needed")
         
         # Convert to PNG format
         buffered = io.BytesIO()
@@ -188,6 +192,7 @@ async def analyze_image(
     label_prompt: str = Form(""),
     segmentation_language: str = Form("English"),
     temperature: float = Form(0.4),
+    skip_resize: bool = Form(False),
     db: Session = Depends(get_db)
 ):
     start_time = time.time()
@@ -196,7 +201,7 @@ async def analyze_image(
     try:
         # Read and convert image to PNG
         image_data = await file.read()
-        img_base64 = convert_image_to_png_base64(image_data)
+        img_base64 = convert_image_to_png_base64(image_data, skip_resize=skip_resize)
         
         # Choose model based on detection type
         model_name = "gemini-2.0-flash" if detect_type == "3D bounding boxes" else "gemini-2.5-flash"
@@ -286,6 +291,96 @@ async def analyze_image(
             logger.error("Failed to save failed prediction to database")
         
         return VisionResponse(success=False, data=[], error=str(e))
+
+@app.post("/analyze-with-overlay")
+async def analyze_image_with_overlay(
+    file: UploadFile = File(...),
+    detect_type: str = Form(...),
+    target_prompt: str = Form("items"),
+    label_prompt: str = Form(""),
+    segmentation_language: str = Form("English"),
+    temperature: float = Form(0.4),
+    skip_resize: bool = Form(False),
+    db: Session = Depends(get_db)
+):
+    """Analyze image and return the image with bounding boxes/masks drawn on it"""
+    start_time = time.time()
+    logger.info(f"Starting analysis with overlay: {detect_type} for '{target_prompt}'")
+    
+    try:
+        # Read and convert image to PNG
+        image_data = await file.read()
+        img_base64 = convert_image_to_png_base64(image_data, skip_resize=skip_resize)
+        
+        # Choose model based on detection type
+        model_name = "gemini-2.0-flash" if detect_type == "3D bounding boxes" else "gemini-2.5-flash"
+        logger.info(f"Using model: {model_name}")
+        
+        # Get analysis results (same logic as regular analyze endpoint)
+        if detect_type == "Segmentation masks":
+            logger.info("Using prompt engineering for segmentation masks...")
+            result = await analyze_with_prompt_engineering(
+                img_base64, detect_type, target_prompt, label_prompt, 
+                segmentation_language, temperature, model_name
+            )
+            formatted_data = result
+        else:
+            try:
+                logger.info("Attempting function calling approach...")
+                result = await analyze_with_function_calling(
+                    img_base64, detect_type, target_prompt, label_prompt, 
+                    segmentation_language, temperature, model_name
+                )
+                formatted_data = result
+            except Exception as func_error:
+                logger.warning(f"Function calling failed: {func_error}")
+                logger.info("Falling back to prompt engineering...")
+                result = await analyze_with_prompt_engineering(
+                    img_base64, detect_type, target_prompt, label_prompt, 
+                    segmentation_language, temperature, model_name
+                )
+                formatted_data = result
+        
+        # Create image with overlays
+        overlay_image_base64 = create_image_with_overlays(img_base64, formatted_data, detect_type)
+        
+        # Calculate processing time
+        processing_time = time.time() - start_time
+        logger.info(f"Analysis with overlay completed in {processing_time:.2f}s")
+        
+        # Save to database
+        prediction = Prediction(
+            image_name=file.filename or "unknown",
+            image_data=f"data:image/png;base64,{img_base64}",
+            detect_type=detect_type,
+            target_prompt=target_prompt,
+            label_prompt=label_prompt,
+            segmentation_language=segmentation_language,
+            temperature=temperature,
+            model_used=f"{model_name} (with overlay)",
+            results=formatted_data,
+            processing_time=processing_time
+        )
+        db.add(prediction)
+        db.commit()
+        db.refresh(prediction)
+        logger.info(f"Saved prediction to database with ID: {prediction.id}")
+        
+        return {
+            "success": True,
+            "data": formatted_data,
+            "overlay_image": f"data:image/png;base64,{overlay_image_base64}",
+            "prediction_id": prediction.id
+        }
+        
+    except Exception as e:
+        processing_time = time.time() - start_time
+        logger.error(f"Analysis with overlay failed after {processing_time:.2f}s: {str(e)}")
+        return {
+            "success": False,
+            "data": [],
+            "error": str(e)
+        }
 
 async def analyze_with_function_calling(
     img_base64: str, detect_type: str, target_prompt: str, 
@@ -614,6 +709,158 @@ def format_prompt_response(detect_type: str, parsed_response: List[dict]) -> Lis
     
     return parsed_response
 
+def create_image_with_overlays(img_base64: str, detections: List[dict], detect_type: str) -> str:
+    """Draw bounding boxes or overlays on the image and return as base64"""
+    try:
+        # Decode base64 image
+        img_data = base64.b64decode(img_base64)
+        image = Image.open(io.BytesIO(img_data))
+        
+        # Convert to RGBA for overlay support
+        if image.mode != 'RGBA':
+            image = image.convert('RGBA')
+        
+        # Create overlay layer
+        overlay = Image.new('RGBA', image.size, (255, 255, 255, 0))
+        draw = ImageDraw.Draw(overlay)
+        
+        # Define colors for different detections
+        colors = [
+            (255, 0, 0, 180),    # Red
+            (0, 255, 0, 180),    # Green  
+            (0, 0, 255, 180),    # Blue
+            (255, 255, 0, 180),  # Yellow
+            (255, 0, 255, 180),  # Magenta
+            (0, 255, 255, 180),  # Cyan
+            (255, 128, 0, 180),  # Orange
+            (128, 0, 255, 180),  # Purple
+        ]
+        
+        logger.info(f"Drawing {len(detections)} {detect_type} on {image.width}x{image.height} image")
+        
+        # Draw overlays based on detection type
+        for i, detection in enumerate(detections):
+            color = colors[i % len(colors)]
+            
+            if detect_type == "2D bounding boxes":
+                draw_2d_bounding_box(draw, detection, color, image.width, image.height, i)
+            elif detect_type == "Points":
+                draw_point(draw, detection, color, image.width, image.height, i)
+            elif detect_type == "Segmentation masks":
+                draw_segmentation_mask(draw, detection, color, image.width, image.height, i)
+            # 3D bounding boxes would need special handling - skip for now
+        
+        # Composite overlay onto original image
+        result_image = Image.alpha_composite(image, overlay)
+        
+        # Convert back to RGB for PNG saving
+        if result_image.mode == 'RGBA':
+            # Create white background
+            background = Image.new('RGB', result_image.size, (255, 255, 255))
+            background.paste(result_image, mask=result_image.split()[-1])  # Use alpha as mask
+            result_image = background
+        
+        # Convert back to base64
+        buffered = io.BytesIO()
+        result_image.save(buffered, format="PNG", optimize=True)
+        result_base64 = base64.b64encode(buffered.getvalue()).decode()
+        
+        logger.info(f"Created overlay image, base64 length: {len(result_base64)}")
+        return result_base64
+        
+    except Exception as e:
+        logger.error(f"Failed to create image with overlays: {e}")
+        # Return original image if overlay fails
+        return img_base64
+
+def draw_2d_bounding_box(draw: ImageDraw.Draw, detection: dict, color: tuple, img_width: int, img_height: int, index: int):
+    """Draw a 2D bounding box on the image"""
+    try:
+        # Convert normalized coordinates (0-1) to pixels
+        left = int(detection['x'] * img_width)
+        top = int(detection['y'] * img_height)
+        width = int(detection['width'] * img_width)
+        height = int(detection['height'] * img_height)
+        
+        right = left + width
+        bottom = top + height
+        
+        # Draw rectangle
+        draw.rectangle([left, top, right, bottom], outline=color[:3] + (255,), width=3)
+        
+        # Draw label background
+        label = detection.get('label', f'Item {index}')
+        try:
+            # Try to load a font, fallback to default if not available
+            font = ImageFont.load_default()
+        except:
+            font = None
+            
+        # Get text size
+        if font:
+            bbox = draw.textbbox((0, 0), label, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+        else:
+            text_width = len(label) * 6  # Approximate
+            text_height = 11
+        
+        # Draw label background
+        label_bg = [left, top - text_height - 4, left + text_width + 8, top]
+        draw.rectangle(label_bg, fill=color[:3] + (200,))
+        
+        # Draw label text
+        draw.text((left + 4, top - text_height - 2), label, fill=(255, 255, 255, 255), font=font)
+        
+        logger.info(f"Drew box {index}: {label} at ({left},{top}) size {width}x{height}")
+        
+    except Exception as e:
+        logger.error(f"Failed to draw bounding box {index}: {e}")
+
+def draw_point(draw: ImageDraw.Draw, detection: dict, color: tuple, img_width: int, img_height: int, index: int):
+    """Draw a point on the image"""
+    try:
+        # Handle both formats: {x, y} or {point: {x, y}}
+        if 'point' in detection:
+            x = detection['point']['x'] * img_width
+            y = detection['point']['y'] * img_height
+        else:
+            x = detection['x'] * img_width
+            y = detection['y'] * img_height
+        
+        # Draw circle
+        radius = 8
+        draw.ellipse([x-radius, y-radius, x+radius, y+radius], fill=color, outline=(255, 255, 255, 255), width=2)
+        
+        # Draw label
+        label = detection.get('label', f'Point {index}')
+        try:
+            font = ImageFont.load_default()
+        except:
+            font = None
+            
+        draw.text((x + radius + 2, y - 6), label, fill=(255, 255, 255, 255), font=font)
+        
+        logger.info(f"Drew point {index}: {label} at ({x:.1f},{y:.1f})")
+        
+    except Exception as e:
+        logger.error(f"Failed to draw point {index}: {e}")
+
+def draw_segmentation_mask(draw: ImageDraw.Draw, detection: dict, color: tuple, img_width: int, img_height: int, index: int):
+    """Draw segmentation mask on the image"""
+    try:
+        # For now, just draw bounding box for segmentation (could enhance with actual mask later)
+        draw_2d_bounding_box(draw, detection, color, img_width, img_height, index)
+        
+        # If there's actual mask data, we could decode and overlay it here
+        # mask_data = detection.get('imageData') or detection.get('mask')
+        # if mask_data:
+        #     # Decode and overlay the actual mask
+        #     pass
+            
+    except Exception as e:
+        logger.error(f"Failed to draw segmentation mask {index}: {e}")
+
 def generate_fallback_mask(xmin: int, ymin: int, xmax: int, ymax: int) -> str:
     """Generate a simple rectangular mask when Gemini doesn't provide one"""
     try:
@@ -725,7 +972,7 @@ async def save_analysis(
     try:
         # Read and convert image to PNG
         image_data = await file.read()
-        img_base64 = convert_image_to_png_base64(image_data)
+        img_base64 = convert_image_to_png_base64(image_data)  # Use default resize behavior for save endpoint
         
         # Parse results JSON
         try:
@@ -775,4 +1022,4 @@ async def save_analysis(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    uvicorn.run(app, host="0.0.0.0", port=8000)
